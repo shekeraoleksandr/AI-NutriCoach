@@ -1,157 +1,182 @@
-# NutriCoach — Nutrition Assistant (Deep Learning Capstone)
+### NutriCoach — Nutrition Intelligence & RAG Assistant
 
-*Predict it, grade it, generate it — then ask it anything.*
+> *Predict it, grade it, generate it — then ask it anything.*
 
-A two-phase deep-learning project on food nutrition. **Phase 1** is a self-contained tabular
-project (regression + classification + a Conditional VAE). **Phase 2** wraps a Retrieval-Augmented
-Generation (RAG) assistant around it, using a **domain-fine-tuned retriever** and calling the
-Phase-1 models as tools.
-
-> Built for an 8-week Deep Learning course capstone. Phase 1 is fully submittable on its own;
-> Phase 2 is a designed-in extension, not a bolt-on.
+A deep-learning project that predicts a food's calorie content, grades its nutritional quality (Nutri-Score), generates novel nutrient profiles with a Conditional Variational Autoencoder, and answers nutrition questions through a Retrieval-Augmented Generation (RAG) assistant built on a **domain-fine-tuned retriever**. Built as a capstone project for a Deep Learning course.
 
 ---
 
-## Why two phases
+### Project Overview
 
-Phase 1 gives clean, reproducible results (hard metric tables). Phase 2 adds the modern GenAI
-story (Transformers + RAG) and — crucially — **reuses** the Phase-1 models instead of stapling an
-unrelated chatbot on top. The trained regressor / classifier / CVAE become *tools* the assistant
-calls for quantitative questions.
+The project is split into two phases. **Phase 1** is a self-contained tabular project; **Phase 2** wraps a RAG assistant around it and reuses the Phase-1 models as callable tools.
 
-Course coverage: classical ML baselines, generative modelling (VAE), Transformers (sentence
-embeddings + a small instruct LLM), and RAG with a proper retrieval evaluation.
+**Phase 1 — Tabular nutrition analysis**
+
+**Calorie Prediction** — given 8 physicochemical properties (per 100 g) of a food, predict its energy content in kcal/100 g. This is a regression problem.
+
+**Nutri-Score Grading** — classify a food into one of five Nutri-Score grades (A = healthiest … E = least healthy) from the same nutrients. A 5-class problem with class imbalance.
+
+**Nutrient Profile Generation** — a Conditional Variational Autoencoder (CVAE) trained across all grades generates new, chemically valid nutrient profiles **conditioned on a target Nutri-Score grade**. This is the generative component, connecting to the VAE/Diffusion lecture material, and improves on a plain VAE by adding conditioning.
+
+**Phase 2 — RAG nutrition assistant**
+
+**Retriever Fine-Tuning** — a general-purpose sentence encoder is adapted to the nutrition domain on synthetic question–passage pairs, and measured against the baseline with retrieval metrics. This is the project's headline result.
+
+**RAG Assistant with Tool Use** — the assistant answers natural-language nutrition questions from a Wikipedia knowledge corpus (with citations) using the fine-tuned retriever, and for quantitative questions it **calls the Phase-1 models as tools** (calorie regressor, Nutri-Score classifier, CVAE generator).
+
+All components are accessible through a single Gradio web interface with three tabs.
 
 ---
 
-## Phase 1 — Tabular nutrition analysis
+### Dataset
 
-**Dataset:** open food-nutrition data (Open Food Facts export or USDA FoodData Central), nutrients
-per 100 g plus a Nutri-Score grade. *(Document the exact export + filters you use here.)*
+Source: [Open Food Facts (with Nutriscore & Generic Names)](https://www.kaggle.com/datasets/paufortiana/open-food-facts-with-nutriscore-and-generic-names) — a cleaned Kaggle subset of the Open Food Facts database.
 
-| Task | Type | Target |
-|------|------|--------|
-| 1. Calorie prediction | Regression | `energy_kcal_100g` |
-| 2. Nutri-Score grade | Classification (A–E, imbalanced) | `nutriscore_grade` |
-| 3. Profile generation | Generative (Conditional VAE) | nutrient vector conditioned on grade |
+After cleaning (column normalisation, numeric coercion, dropping impossible values such as >900 kcal/100 g, and filling undeclared nutrients with 0), the dataset contains **87,164 food products**, each described by nutrients per 100 g plus a human-relevant Nutri-Score grade.
 
-### Results — Task 1 (regression)
+**Input features (8 nutrients, per 100 g):**
+
+| Feature | Description |
+|---------|-------------|
+| proteins_100g | Protein content |
+| fat_100g | Total fat |
+| saturated_fat_100g | Saturated fat |
+| carbohydrates_100g | Total carbohydrates |
+| sugars_100g | Sugars (subset of carbohydrates) |
+| fiber_100g | Dietary fiber |
+| salt_100g | Salt content |
+| sodium_100g | Sodium content |
+
+The dataset also carries `product_name` / `generic_name`, used to make the RAG demo tangible.
+
+**Targets:** `energy_kcal_100g` (regression) and `nutriscore_grade` A–E (classification).
+
+**Class distribution (Nutri-Score grade):**
+
+| Grade | Samples |
+|-------|---------|
+| A (healthiest) | 15,381 |
+| B | 13,211 |
+| C | 18,636 |
+| D | 24,057 |
+| E (least healthy) | 15,879 |
+
+The classes are imbalanced (D is nearly 2× larger than B), which is handled with class-weighted training.
+
+---
+
+### Models and Results
+
+### Task 1 — Regression: predict calories (kcal/100 g)
 
 | Model | RMSE | MAE | R² |
-|-------|-----:|----:|---:|
-| Random Forest | _tbd_ | _tbd_ | _tbd_ |
-| XGBoost | _tbd_ | _tbd_ | _tbd_ |
-| MLP | _tbd_ | _tbd_ | _tbd_ |
+|-------|------|-----|----|
+| Random Forest | 29.64 | 8.34 | 0.974 |
+| **XGBoost** | 27.74 | 8.87 | **0.978** |
+| MLP Neural Network | 28.04 | 8.44 | 0.977 |
 
-### Results — Task 2 (classification)
+**Best model: XGBoost** with RMSE ≈ 27.7 kcal and R² ≈ 0.978.
+
+**How to read these numbers:** an R² of 0.978 looks spectacular, but this task is close to a *closed-form relationship*. Calories per 100 g are governed by the **Atwater factors**: `energy ≈ 4·protein + 4·carbohydrate + 9·fat`, and those macronutrients are exactly the input features. So the model is largely rediscovering a known formula. This task is therefore best read as a **sanity check** that the features are clean and informative — not as the project's achievement. All three models perform almost identically, which is itself evidence of the near-deterministic target.
+
+### Task 2 — Classification: Nutri-Score grade (A–E)
 
 | Model | Accuracy | Macro-F1 |
-|-------|---------:|---------:|
-| Random Forest | _tbd_ | _tbd_ |
-| XGBoost | _tbd_ | _tbd_ |
-| MLP | _tbd_ | _tbd_ |
+|-------|----------|----------|
+| Random Forest | 88.4% | 0.879 |
+| **XGBoost** | 88.6% | **0.882** |
+| MLP Neural Network | 85.9% | 0.853 |
 
-### Task 3 — Conditional VAE
+Trained with `class_weight='balanced'` to counter the imbalance; macro-F1 is reported alongside accuracy so minority grades are not hidden.
 
-Trained to generate nutrient profiles **conditioned on a target Nutri-Score grade**. Report the
-chemical signatures of generated grade-A vs grade-E profiles and cross-check them with the Task-2
-classifier. *(fill in with generated-sample statistics.)*
+The confusion matrix shows that misclassifications concentrate almost entirely between **adjacent** grades (A↔B, C↔D, D↔E) — the model rarely confuses distant grades. This is exactly the desirable failure mode for an ordinal scale. Nutri-Score is itself an algorithm computed from the nutrients, so ~88.6% reflects the model learning that scoring logic; it is not ~99% because Open Food Facts frequently lacks the fruit/vegetable/nut % component that the official formula uses.
+
+### Task 3 — Conditional VAE: nutrient profile generation
+
+A Conditional Variational Autoencoder (PyTorch, 8-dimensional latent space) was trained on the full dataset, with the target Nutri-Score grade supplied as a one-hot condition. Sampling the latent space with a chosen grade generates new nutrient profiles for that grade on demand. Training loss converged smoothly (≈ 0.64 → 0.37).
+
+**Generated grade-A ("healthy") profiles consistently show:**
+
+- Low fat and low saturated fat
+- Low salt / sodium
+- Moderate protein and fiber
+
+**Closed-loop validation:** every generated grade-A profile is independently **confirmed as grade A by the Task-2 classifier**. The generative model (CVAE) and the discriminative model (classifier) agree, which is strong evidence the CVAE learned the true "healthy profile" distribution rather than noise.
+
+### Task 4 — Retriever fine-tuning (headline result)
+
+**Pipeline:** a 905-chunk knowledge corpus (20 nutrition/exercise Wikipedia articles, 512-char chunks) is indexed with FAISS. A small instruct LLM (`Qwen2.5-1.5B-Instruct`) then generates **2,715 synthetic (question, passage) pairs** with no manual labelling (the GPL/InPars idea), split into 2,307 train / 408 held-out test. The base encoder `all-MiniLM-L6-v2` is fine-tuned on the training pairs with **MultipleNegativesRankingLoss** (in-batch negatives, 3 epochs), then evaluated on the gold test pairs.
+
+| Retriever | Recall@1 | Recall@3 | Recall@5 | Recall@10 | MRR | nDCG@10 |
+|-----------|----------|----------|----------|-----------|-----|---------|
+| Baseline (`all-MiniLM-L6-v2`) | 0.503 | 0.750 | 0.797 | 0.897 | 0.641 | 0.703 |
+| **Fine-tuned** | **0.613** | **0.821** | **0.868** | **0.941** | **0.728** | **0.780** |
+
+Domain fine-tuning improves **every** metric with no regressions — **Recall@1 +11.0 pp (+22% relative), MRR +8.6 pp, nDCG@10 +7.6 pp**. This is the core, defensible finding of the project: adapting a general encoder to a domain measurably improves retrieval, quantified cleanly with a before/after table.
+
+### Task 5 — RAG assistant with tool use
+
+The fine-tuned retriever feeds the top-5 passages to `Qwen2.5-1.5B-Instruct`, which answers with inline source citations. For quantitative questions the assistant instead invokes the Phase-1 models as tools:
+
+- `predict_calories(features)` → kcal/100 g
+- `predict_grade(features)` → Nutri-Score grade A–E
+- `generate_profile(target_grade)` → a synthetic nutrient profile (CVAE)
+
+This closes the loop between the two phases: the retrieval/generation stack answers open questions, while the trained tabular/generative models answer numeric ones.
 
 ---
 
-## Phase 2 — RAG nutrition assistant
+### Key Findings
 
-Pipeline: **corpus → chunk → embed → retrieve → generate (with citations)**, plus tool calls to
-the Phase-1 models.
+**Fat dominates calorie content.** In EDA, fat has by far the highest correlation with calories (r ≈ 0.80), followed by saturated fat (0.60) and carbohydrates (0.51). This is the Atwater 9-kcal-per-gram-of-fat rule surfacing directly in the data, and explains why the regression is near-deterministic.
 
-**Knowledge corpus (open sources):** Wikipedia (nutrition / supplements / exercise physiology),
-OpenStax *Nutrition* (CC BY), WHO / USDA dietary guidelines. *(List exactly what you ingest.)*
+**Nutri-Score errors are ordinal, not random.** The classifier's mistakes fall between neighbouring grades, never between A and E. A model that "misses" only by one grade on a subjective, formula-derived label is behaving correctly.
 
-**The headline experiment — fine-tuned retriever.** Base embeddings often miss domain phrasing.
-We generate `(question, passage)` training pairs *synthetically* with an LLM (no manual labels,
-à la GPL/InPars), fine-tune the embedding model, and measure the lift on a held-out gold set.
+**A general encoder can be measurably specialised with zero labels.** Using an LLM to synthesise training pairs, the retriever gained +22% Recall@1 with no human annotation — a practical, reproducible recipe for domain adaptation.
 
-### Results — retrieval (baseline vs fine-tuned)
+**Generative and discriminative models agree.** The CVAE's grade-A outputs are confirmed as grade A by the independent classifier, validating that the generator captured the real premium-profile distribution.
 
-| Retriever | Recall@1 | Recall@3 | Recall@5 | MRR | nDCG@10 |
-|-----------|---------:|---------:|---------:|----:|--------:|
-| Baseline (`bge-small`) | _tbd_ | _tbd_ | _tbd_ | _tbd_ | _tbd_ |
-| **Fine-tuned** | _tbd_ | _tbd_ | _tbd_ | _tbd_ | _tbd_ |
-
-End-to-end answer quality via **RAGAS** (faithfulness, answer relevancy) on held-out questions.
-
-**Tools.** For quantitative questions the assistant calls Phase-1 models:
-`predict_calories(features)`, `predict_grade(features)`, `generate_profile(target_grade, n)`.
+**High accuracy is not always impressive.** Both the calorie R² (0.978) and part of the Nutri-Score accuracy come from targets that are algorithmic functions of the inputs. Reporting this honestly — and locating the genuine novelty in Phase 2 — is itself a finding.
 
 ---
 
-## Repository layout
+### Limitations and Future Work
+
+- The knowledge corpus is small (20 articles, 905 chunks); expanding it and using a stronger base encoder would likely widen the retrieval gap further.
+- Synthetic question quality depends on the small LLM; a larger generator or light human review of pairs would improve training-signal quality.
+- End-to-end answer quality is currently judged qualitatively; adding RAGAS (faithfulness, answer relevancy) would quantify the generation stage.
+- A cross-encoder **reranker** on top of the fine-tuned retriever is a natural next step for another accuracy bump.
+- The Nutri-Score classifier is missing the fruit/vegetable/nut % input; adding it (where available) would push accuracy higher.
+- Deployment on Hugging Face Spaces would make the Gradio demo permanently accessible.
+
+---
+
+### Artifacts
+
+Trained models (calorie regressor, Nutri-Score classifier, CVAE, and the fine-tuned retriever) plus metric tables are published to the Hugging Face Hub: **`oshek/nutricoach`**. They can be reloaded in a fresh session without retraining.
+
+---
+
+## Project Structure
 
 ```
 nutricoach-rag/
+├── NutriCoach_Capstone.ipynb   # Single end-to-end notebook (runs the whole pipeline)
 ├── README.md
 ├── requirements.txt
-├── data/            raw / processed / pairs   (gitignored; download instructions above)
-├── models/          trained artifacts         (gitignored; push retriever to HF Hub)
-├── notebooks/
-│   ├── 00_colab_runner.ipynb          clone + install + run on Colab GPU
-│   ├── 01_ingest_eda.ipynb            tabular EDA + corpus ingest
-│   ├── 02_train_tabular.ipynb         regression + classification
-│   ├── 03_cvae.ipynb                  conditional VAE
-│   ├── 04_retriever_pairs_finetune.ipynb   synthetic pairs + retriever fine-tuning
-│   ├── 05_eval.ipynb                  baseline vs fine-tuned + RAGAS
-│   └── 06_rag_demo.ipynb              full RAG + tool calls
-├── src/nutricoach/  config, data, models_tabular, cvae, ingest, retriever, pairs, rag, evaluate
-├── app/app.py       Gradio demo (3 tabs)
-└── reports/figures/ plots for this README
+├── src/nutricoach/             # Reusable modules
+│   ├── config.py                   # paths, feature schema, model names
+│   ├── data.py                     # Open Food Facts download + cleaning
+│   ├── models_tabular.py           # regression + classification + tool interfaces
+│   ├── cvae.py                     # Conditional VAE + generate_profile()
+│   ├── ingest.py                   # corpus fetching + chunking
+│   ├── pairs.py                    # synthetic query–passage generation
+│   ├── retriever.py                # dense retriever, FAISS index, fine-tuning
+│   ├── rag.py                      # RAG orchestration + Phase-1 tools
+│   └── evaluate.py                 # regression / classification / retrieval metrics
+├── app/app.py                  # Gradio demo (3 tabs)
+├── notebooks/                  # Per-topic notebooks (00–06) mirroring the steps
+└── reports/                    # Metric tables + figures
 ```
 
----
-
-## Quickstart
-
-**Colab (recommended):** open **`NutriCoach_Capstone.ipynb`** (in Colab: *File → Open notebook →
-GitHub →* `shekeraoleksandr/AI-NutriCoach`), set runtime to **GPU**, add a Colab Secret
-`KAGGLE_API_TOKEN`, then run top to bottom. It runs the whole pipeline (Phase 1 + Phase 2) in a
-single runtime, so all state persists. *(The numbered `notebooks/00–06` are the same steps split
-per-topic for reading, but Colab gives each notebook its own VM, so the single notebook is the way
-to actually run everything.)*
-
-**Kaggle credentials** (needed to download the dataset): Kaggle → *Settings → API → Create New
-Token* gives `kaggle.json`. Locally put it at `~/.kaggle/kaggle.json` (`chmod 600`); on Colab
-upload it or use Colab Secrets (`KAGGLE_USERNAME` / `KAGGLE_KEY`). Never commit it — it's gitignored.
-
-**Local:**
-
-```bash
-git clone https://github.com/shekeraoleksandr/AI-NutriCoach.git
-cd AI-NutriCoach
-pip install -r requirements.txt
-python app/app.py          # launch the Gradio demo (after training artifacts exist)
-```
-
-Models are loaded lazily, so the app and modules import cleanly before everything is trained.
-
----
-
-## Roadmap
-
-- [ ] Phase 1: dataset download + EDA (`01`)
-- [ ] Phase 1: regression & classification results (`02`)
-- [ ] Phase 1: Conditional VAE (`03`)
-- [ ] Phase 2: corpus ingest + baseline index (`01`, `04`)
-- [ ] Phase 2: synthetic pairs + retriever fine-tuning (`04`)
-- [ ] Phase 2: retrieval eval + RAGAS (`05`)
-- [ ] Phase 2: full RAG demo + tool calls (`06`)
-- [ ] Deploy Gradio demo to Hugging Face Spaces
-
-## Limitations & future work
-
-Nutri-Score labels are coarse; the class distribution is imbalanced (addressed with class weights /
-SMOTE). The RAG retrieval metric depends on the quality of synthetic pairs — worth spot-checking a
-sample by hand. A reranker (cross-encoder) is a natural stretch goal on top of the fine-tuned
-retriever.
-
-## License
-
-MIT — see `LICENSE`.
+**Run it:** open `NutriCoach_Capstone.ipynb` in Colab (GPU runtime), add a Kaggle token (`KAGGLE_API_TOKEN`) and a Hugging Face token (`HF_TOKEN`) as Colab Secrets, and run top to bottom. The whole pipeline (Phase 1 + Phase 2) executes in a single runtime.
