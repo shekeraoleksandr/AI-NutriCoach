@@ -95,8 +95,17 @@ def predict_calories(features: dict) -> float:
 
 
 def predict_grade(features: dict) -> str:
-    """Predicted Nutri-Score grade (a..e). Stable tool signature for the RAG agent."""
+    """Predicted Nutri-Score grade (a..e). Stable tool signature for the RAG agent.
+
+    Classifiers are trained on integer-encoded grades (a..e -> 0..4) because XGBoost requires
+    numeric class labels; here we decode the integer prediction back to a letter. If a model
+    was instead trained on letters, we pass the value straight through.
+    """
     global _clf_cache
     if _clf_cache is None:
         _clf_cache = _load(CLF_PATH)
-    return str(_clf_cache.predict(_vectorize(features))[0])
+    pred = _clf_cache.predict(_vectorize(features))[0]
+    try:
+        return C.NUTRISCORE_GRADES[int(pred)]
+    except (ValueError, TypeError, IndexError):
+        return str(pred)
