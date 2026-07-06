@@ -82,7 +82,7 @@ KAGGLE_DATASET = "paufortiana/open-food-facts-with-nutriscore-and-generic-names"
 RANDOM_SEED = 42
 
 # --- RAG / retriever (Phase 2) -----------------------------------------------
-BASE_EMBEDDING_MODEL = "BAAI/bge-small-en-v1.5"    # baseline retriever
+BASE_EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L6-v2"  # general encoder we adapt to the domain
 FINETUNED_MODEL_DIR = MODELS_DIR / "retriever_finetuned"
 GENERATOR_MODEL = "Qwen/Qwen2.5-1.5B-Instruct"     # small instruct LLM for answers
 CHUNK_SIZE = 512           # characters per chunk (tune)
