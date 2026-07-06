@@ -31,3 +31,4 @@ tqdm>=4.66
 pyyaml>=6.0
 huggingface-hub>=0.24      # push fine-tuned retriever as an artifact
 kagglehub>=0.3             # download the Open Food Facts dataset
+wikipedia-api>=0.6            # knowledge corpus (Phase 2)
