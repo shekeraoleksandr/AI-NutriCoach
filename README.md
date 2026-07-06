@@ -110,9 +110,12 @@ nutricoach-rag/
 
 ## Quickstart
 
-**Colab (recommended for training):** open `notebooks/00_colab_runner.ipynb` (in Colab: *File →
-Open notebook → GitHub →* `shekeraoleksandr/AI-NutriCoach`), set runtime to GPU, run the clone +
-install + Kaggle-credentials cells, then run notebooks 01 → 06 in order.
+**Colab (recommended):** open **`NutriCoach_Capstone.ipynb`** (in Colab: *File → Open notebook →
+GitHub →* `shekeraoleksandr/AI-NutriCoach`), set runtime to **GPU**, add a Colab Secret
+`KAGGLE_API_TOKEN`, then run top to bottom. It runs the whole pipeline (Phase 1 + Phase 2) in a
+single runtime, so all state persists. *(The numbered `notebooks/00–06` are the same steps split
+per-topic for reading, but Colab gives each notebook its own VM, so the single notebook is the way
+to actually run everything.)*
 
 **Kaggle credentials** (needed to download the dataset): Kaggle → *Settings → API → Create New
 Token* gives `kaggle.json`. Locally put it at `~/.kaggle/kaggle.json` (`chmod 600`); on Colab
