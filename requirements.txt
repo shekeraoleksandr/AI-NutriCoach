@@ -1,0 +1,33 @@
+# --- Core / data ---
+numpy>=1.26
+pandas>=2.1
+scikit-learn>=1.4
+scipy>=1.11
+matplotlib>=3.8
+seaborn>=0.13
+
+# --- Phase 1: tabular models + generative ---
+xgboost>=2.0
+torch>=2.2            # MLP + (Conditional) VAE
+imbalanced-learn>=0.12  # SMOTE / class balancing
+shap>=0.45           # feature importance / interpretability
+
+# --- Phase 2: RAG (retriever + generation) ---
+sentence-transformers>=3.0   # embeddings + fine-tuning
+faiss-cpu>=1.8               # vector index (use faiss-gpu on Colab if available)
+transformers>=4.44          # generator LLM
+accelerate>=0.33
+datasets>=2.20
+rank-bm25>=0.2              # sparse baseline for retrieval comparison
+
+# --- Evaluation ---
+ragas>=0.1.9               # faithfulness / answer relevancy (Phase 2)
+
+# --- Demo ---
+gradio>=4.40
+
+# --- Utils ---
+tqdm>=4.66
+pyyaml>=6.0
+huggingface-hub>=0.24      # push fine-tuned retriever as an artifact
+kagglehub>=0.3             # download the Open Food Facts dataset

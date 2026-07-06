@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.ipynb_checkpoints/
+.venv/
+venv/
+env/
+
+# Data — keep folder structure, ignore large/raw files
+data/raw/*
+data/processed/*
+data/pairs/*
+!data/**/.gitkeep
+
+# Model artifacts (push to Hugging Face Hub instead)
+models/*
+!models/.gitkeep
+*.pt
+*.pth
+*.bin
+*.safetensors
+
+# Vector index
+*.faiss
+*.index
+
+# Reports (keep figures you want in README)
+reports/figures/*
+!reports/figures/.gitkeep
+
+# Secrets — NEVER commit Kaggle / HF credentials
+kaggle.json
+.kaggle/
+*.env
+.env
+
+# OS / editors
+.DS_Store
+.idea/
+.vscode/
