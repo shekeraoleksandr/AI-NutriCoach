@@ -89,5 +89,6 @@ CHUNK_SIZE = 512           # characters per chunk (tune)
 CHUNK_OVERLAP = 64
 TOP_K = 5                  # retrieved passages passed to the generator
 
-# Hugging Face Hub repo id to push the fine-tuned retriever (fill in your username)
-HF_RETRIEVER_REPO = "your-username/nutricoach-retriever"
+# Hugging Face Hub — repo *name* only. The full id ("<username>/<name>") is derived at
+# runtime from your HF token in the notebook's Persist section, so nothing is hardcoded.
+HF_REPO_NAME = "nutricoach"
