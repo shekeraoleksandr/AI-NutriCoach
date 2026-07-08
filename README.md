@@ -2,6 +2,8 @@
 
 > *Predict it, grade it, generate it — then ask it anything.*
 
+**🔗 Live demo:** [oshek/nutricoach on Hugging Face Spaces](https://huggingface.co/spaces/oshek/nutricoach)
+
 A deep-learning project that predicts a food's calorie content, grades its nutritional quality (Nutri-Score), generates novel nutrient profiles with a Conditional Variational Autoencoder, and answers nutrition questions through a Retrieval-Augmented Generation (RAG) assistant built on a **domain-fine-tuned retriever**. Built as a capstone project for a Deep Learning course.
 
 ---
@@ -153,7 +155,9 @@ This closes the loop between the two phases: the retrieval/generation stack answ
 
 ### Artifacts
 
-Trained models (calorie regressor, Nutri-Score classifier, CVAE, and the fine-tuned retriever) plus metric tables are published to the Hugging Face Hub: **`oshek/nutricoach`**. They can be reloaded in a fresh session without retraining.
+Trained models (calorie regressor, Nutri-Score classifier, CVAE, and the fine-tuned retriever) plus metric tables are published to the Hugging Face Hub: **[oshek/nutricoach](https://huggingface.co/oshek/nutricoach)**. They can be reloaded in a fresh session without retraining.
+
+The interactive chatbot is deployed on Hugging Face Spaces: **[oshek/nutricoach](https://huggingface.co/spaces/oshek/nutricoach)** — ask nutrition questions (RAG with citations) or use the tools tab to predict calories/Nutri-Score and generate a healthier alternative.
 
 ---
 
