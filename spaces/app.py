@@ -72,6 +72,16 @@ cvae.load_state_dict(torch.load(os.path.join(LOCAL, "cvae.pt"), map_location="cp
 cvae.eval()
 cvae_scaler = joblib.load(os.path.join(LOCAL, "cvae_scaler.joblib"))
 
+# Optional: nutrient database for the "most similar real product" lookup (nearest neighbour).
+try:
+    _npz = np.load(os.path.join(LOCAL, "foods.npz"), allow_pickle=True)
+    FOOD_X = cvae_scaler.transform(_npz["X"].astype("float32"))   # standardised nutrients
+    FOOD_NAMES = _npz["names"]
+    print("loaded", len(FOOD_NAMES), "foods for nearest-neighbour lookup")
+except Exception as e:  # foods.npz not uploaded yet -> feature simply disabled
+    FOOD_X, FOOD_NAMES = None, None
+    print("foods.npz not found — nearest-food lookup disabled:", e)
+
 
 # --- Corpus: load prebuilt chunks if present, else fetch Wikipedia -----------
 def _chunk(text, source):
@@ -162,6 +172,22 @@ def generate_profile(target_grade="a", n=1):
     return [dict(zip(NUTRIENT_FEATURES, row.tolist())) for row in x]
 
 
+def nearest_food(features, k=3):
+    """Most chemically similar real products (nearest neighbour over the OFF dataset)."""
+    if FOOD_X is None:
+        return []
+    q = cvae_scaler.transform(_vec(features))
+    dist = np.linalg.norm(FOOD_X - q, axis=1)
+    out = []
+    for i in np.argsort(dist):
+        name = str(FOOD_NAMES[i]).strip()
+        if name and name.lower() not in ("nan", "none"):
+            out.append(name)
+        if len(out) >= k:
+            break
+    return out
+
+
 # --- Chat handler ------------------------------------------------------------
 def chat(message, history):
     hits = search(message, k=TOP_K)
@@ -181,13 +207,20 @@ def analyze(proteins, fat, sat_fat, carbs, sugars, fiber, salt, sodium, target_g
                      [proteins, fat, sat_fat, carbs, sugars, fiber, salt, sodium]))
     kcal = predict_calories(feats)
     grade = predict_grade(feats).upper()
+    match = nearest_food(feats, k=3)
+    food_line = f"~{kcal:.0f} kcal/100g · Nutri-Score {grade}"
+    if match:
+        food_line += "\nMost similar products: " + "; ".join(match)
+
     alt = generate_profile(target_grade, n=1)[0]
     alt_kcal = predict_calories(alt)
     alt_grade = predict_grade(alt).upper()
+    alt_match = nearest_food(alt, k=3)
+    alt_line = f"~{alt_kcal:.0f} kcal/100g · Nutri-Score {alt_grade}"
+    if alt_match:
+        alt_line += "\nMost similar products: " + "; ".join(alt_match)
     alt_str = ", ".join(f"{k.replace('_100g','')}={v:.1f}" for k, v in alt.items())
-    return (f"~{kcal:.0f} kcal/100g · Nutri-Score {grade}",
-            f"~{alt_kcal:.0f} kcal/100g · Nutri-Score {alt_grade}",
-            alt_str)
+    return (food_line, alt_line, alt_str)
 
 
 # --- UI ----------------------------------------------------------------------
