@@ -1,6 +1,6 @@
 ### NutriCoach — Nutrition Intelligence & RAG Assistant
 
-**Live demo:** [oshek/nutricoach on Hugging Face Spaces](https://huggingface.co/spaces/oshek/nutricoach)
+**Live demo:** [oshek/nutricoach on Hugging Face Spaces](https://huggingface.co/spaces/oshek/nutricoach)  ·  **Video:** [YouTube](https://youtu.be/6ylwcwygIts)
 
 A deep-learning project that predicts a food's calorie content, grades its nutritional quality (Nutri-Score), generates novel nutrient profiles with a Conditional Variational Autoencoder, and answers nutrition questions through a Retrieval-Augmented Generation (RAG) assistant built on a **domain-fine-tuned retriever**. Built as a capstone project for a Deep Learning course.
 
